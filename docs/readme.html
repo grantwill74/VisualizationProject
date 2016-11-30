@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			body {
+				border: 0;
+				background-color: #EEE;
+				padding-left: 15%;
+				padding-right: 15%;
+				/*max-width: 600px;*/
+				line-height: 1.6;
+				font-size: 18px;
+				color: #333; 
+				display: table-cell;
+				vertical-align: middle;
+			}
+			
+			button {
+				height: 95%;
+				width: 95%;
+				font-size: 20px;
+			}
+			
+			td { 
+				vertical-align: top;
+				padding-left: 20px;
+				padding-right: 20px;
+			}
+			
+			.names {
+				font-family: serif;
+				letter-spacing: 2px;
+				text-align: center;
+			}
+			
+			.readme {
+				font-family: sans-serif;
+				text-align: center;
+				margin-top: -10px;
+			}
+			
+			h1, h2, h3 {
+				line-height: 1.0;
+				font-family: sans-serif;
+			}
+			
+			h1 { 
+				text-align: center;
+				margin-bottom: 10px;
+			}
+			
+			h3 {
+				color: #444;
+			}
+
+			canvas {
+				width: 600px;
+				height: 400px;
+				display: block;
+				padding-bottom: 20px;
+			}
+			
+			html {
+				display: table;
+				margin: auto;
+			}
+			
+			p, li {
+				text-align: justify;
+			}
+		</style>
+	</head>
+	
+	<body>
+		<h1>Volumetric Texture Visualizer: Readme</h1>
+		<div class="names">Shayan Shams, Grant Williams, Chenguang Zhang</div>
+		<h2>Table of Contents</h2>
+		<ol>
+			<li><a href="#intro">Objective</a></li>
+			<li><a href="#screenshot">Screenshot</a></li>
+			<li><a href="#inter">Interactions</a></li>
+			<li><a href="#method">Methodology</a></li>
+			<li><a href="#impl">Implementation</a></li>
+			<li><a href="#code">Code Files</a></li>
+			<li><a href="#perf">Performance</a></li>
+			<li><a href="#future">Future Work</a></li>
+			<li><a href="#issues">Known Issues</a></li>
+			<li><a href="#conc">Conclusion</a></li>
+		</ol>
+		
+		<h2 id="intro">Objective</h2>
+		<p>
+			This is the volumetric texture implementation project assigned for the Scientifict Information Visualization. We were tasked to do the following:
+			<ol>
+				<li>Visualize a given scalar volume data set using 2D or 3D texture mapping.</li>
+				<li>Display the data using a color map.</li>
+				<li>Use texture mapping to implement the color map, and filter the textures.</li>
+				<li>Support planar and box clipping.</li>
+				<li>Provide a user interface.</li>
+			</ol>
+		</p>
+		
+		<p>
+			We provided these features as follows:
+			<ol>
+				<li>We implemented both 2D and 3D texture mapping, but both are subject to some limitations</li>
+				<li>We used a color map, with an aesthetically pleasing transfer function and transparency.</li>
+				<li>We generated color maps and uploaded them as textures. We used bilinear filtering, as provided by OpenGL. Additionally, we implemented our own special texture filtering for 3D textures </li>
+				<li>We support both planar and box clipping, subject to one issue listed below.</li>
+				<li>We provide a graphical user interface using HTML forms for convenient feature discovery. </li>
+			</ol>
+		</p>
+		
+		<h2 id="screenshot">Screenshot</h2>
+		<img src="screenshot.png" style="height:400px;width:50%;margin:auto;display:table;"/>
+		
+		<h2 id="inter">Interactions and Features</h2>
+		<p>
+			The user has the following options to customize the display of the volume:
+		</p>
+		<ul>
+			<li><b>View options:</b> either allow the volume to smoothly <b>auto-rotate</b> around the Y axis, or allow the user to <b>manually</b> specify the degrees to rotate around each axis (Euler angles). Orthographic projection is used for the view, because the volume viewed is a perfect cube. Perspective projection would have made it awkward to accurately see through the object to locate a particular cluster of points.</li>
+			
+			<li><b>Texture mode:</b> allows the user to use <b>2D</b> or <b>3D</b> slice-based texture visualization. This option is subject to limitations as listed below.</li>
+			
+			<li><b>Clipping mode:</b> allows the user to select between <b>no clipping</b>, <b>plane-based clipping</b>, and <b>box clipping</b>. For plane clipping, 6 planes are availible. Each axis has two planes, one which bounds the volume from above (the positive plane) and one which bounds from below (the negative plane). For box based clipping, the user can select the x, y, z coordinate of the least-significant vertex of the clipping box, along with the number of layers, rows, and columns to be visible. Fractional values are allowed. Clipping is subject to some limitations which are described below. In particular, Z-coordinate-based clipping parameters do not work correctly. The labels of these parameters are displayed in <span style="color:brown;">brown</span>. </li>
+		</ul>
+		
+		<h2 id="method">Methodology</h2>
+		<h3>Samples</h3>
+		<p>
+			The input texture is sampled in software to generate the texels of the textures. These samples are filtered in software using tri-linear interpolation before the transfer function is applied. 
+		</p>
+		<h3>Transfer function:</h3>
+		<p>
+			When the texture is pre-processed (discussed further in the implementation section), the minimum and maximum values are identified. These values are used to scale each sample between 0 and 1. These scaled values (x) are then turned into an RGBA color by 8-bit channel according to the following functions:
+		</p>
+		<ul style="font-family: monospace;">
+			<li>r(x) = 255 * x</li> 
+			<li>g(x) = 0 </li>
+			<li>b(x) = 255 * (1 - x)</li>
+			<li>a(x) = 255 * x</li>
+		</ul>
+			
+		<h3>Slice generation</h3>
+		<p>
+			2D slices are object-aligned and work according to the technique we learned in class. First, a texture is generated for each slice based on the transfer function. Since the dimensions of the input data are 80 * 80 * 80, each slice has 80 * 80 texels. Due to a persistent bug in the vertex pipeline, only one set of slices (the XY plane) are visible. This means that at certain rotations, gaps can be seen between slices. 
+		</p>
+		
+		<p>
+			3D slices are supposed to be view-aligned. Unfortunately, due to an issue mentioned below they are heavily distorted, and sometimes the user can see gaps. 3D textures are not natively supported in WebGL, but we have implemented a workaround in our shader, allowing for tri-linear 3D texture interpolation.
+		</p>
+		
+		
+		<h2 id="impl">Implementation</h2>
+		<p>
+			This project was implemented using WebGL. Our intention was to make it easy for you to view, and easy for us to collaborate as well (one of our team members uses Linux). This was a major learning experience for all of us because WebGL does not support the fixed-function pipeline, forcing us to implement things like clipping planes in shaders. Furthermore, WebGL has a number of severe limitations that dramatically increased the difficulty, such as a lack of support for 3D textures. 
+		</p>
+		
+		<h3>Texture pre-processing</h3>
+		<p>
+			We took your input texture and wrote a simple script in Ruby to turn it into a JSON file. JSON objects can be easily loaded by Javascript interpreters. We also stripped extraneous lines this way. 
+		</p>
+		
+		<h3>Slices</h3>
+		<p>
+			The most important data structure used by the application is the <code>slice-set</code>. <code>slice-sets</code> represent a volume defined by slices, where each slice is a tuple of 4 vertices representing the corners of a quad. Two functions generate slices: one for object-aligned slices and one for view-aligned slices. Object-aligned slices are generated with a simple loop that generates a slice for each layer. View-aligned slices are generated by constructing a single slice that passes through the center coordinate of the volume, and is parallel to the view plane. This single slice is then cloned both in front and behind until the number of slices is reached (80).
+		</p>
+		
+		<h3>Mesh-generation</h3>
+		<p>
+			The mesh generation function took a slice-set as input and generated a vertex-buffer, index-buffer, and texture (for 2D texture rendering). Each of these OpenGL object handles were grouped into tuples, and stored in an object. Drawing the mesh consisted of binding each group of buffers and rendering each slice. 
+		</p>
+		
+		<h3>3D textures and sampling</h3>
+		<p>
+			WebGL does not natively support 3D textures, so we implemented a work-around, found in a google IO talk with code located <a href="https://github.com/WebGLSamples/WebGLSamples.github.io/blob/master/color-adjust/color-adjust.html">here</a>. Essentially, the approach works as follows:
+		</p>
+		
+		<ol>
+			<li>Construct a 2D texture with dimensions of X*Y by Z. In our case, this texture is 640 by 80.</li>
+			<li>Each row of this texture represents a complete slice of the 3D texture, stored in row-major order.</li>
+			<li>The shader defines a custom sampler function which identifies the two slices that surround a point in Z coordinates. It then performs bilinear interpolation between the colors of those points using the Z value of the texel.</li>
+		</ol>
+		
+		<h3>Clipping Planes</h3>
+		<p>
+			WebGL does not support fixed-function clipping planes, so this functionality was implemented in the fragment shader. The original, untransformed vertex coordinates are interpolated and passed through to the fragment shader. If fragments lie on the wrong side of the plane, or outside the box, the fragment is discarded. 
+		</p>
+		
+		<h2 id="code">Code Files</h2>
+		<p>This section lists each file and what functionality it implements.</p>
+		<ul>
+			<li>
+				<b>globals.js:</b> A set of global variables that are modified by the user interface to communicate with the main application. Also contains important object handles that need to be used by all functions, such as the GL context pointer. <b>[66 lines]</b>
+			</li>
+		
+			<li>
+				<b>init.js:</b> Contains code to initialize the web application when the page is loaded. Calls code that generates object-aligned slice mesh so it can be created once and sent to the video card. Also initializes the rendering loop. <b>[198 lines]</b>
+			</li>
+			
+			<li>
+				<b>render.js:</b> Contains the implementation of the render loops, both for 2D and 3D textured slices. Also contains the code to perform modelview and perspective transformations. <b>[197 lines]</b>
+			</li>
+			
+			<li>
+				<b>shaders.js:</b> Contains both the 2D and 3D texture fragment shaders, the unique vertex shader, and code to assist loading shaders and linking shader programs. <b>[168 lines]</b>
+			</li>
+			
+			<li>
+				<b>slices2d.js:</b> Contains code that generates object-aligned 2D texture slices. <b>[85 lines]</b>
+			</li>
+			
+			<li>
+				<b>slices3d.js:</b> Contains code that generates view-aligned 3D texture slices. <b>[122 lines]</b>
+			</li>
+			
+			<li>
+				<b>texture.js:</b> Contains code that loads and generates 2D and 3D textures. Also contains code that directly uses those textures, such as mesh generation. <b>[351 lines]</b>
+			</li>
+			
+			<li>
+				<b>transfer.js:</b> Contains the transfer function. <b>[22 lines]</b>
+			</li>
+		</ul>
+		
+		<h2 id="perf">Performance</h2>
+		<p>
+			Performance of this application is poor on most computers. This is partly a limitation of WebGL, and partly a result of poor optimization on our part. If your computer is unable to run the app, we can provide a demonstration using one of our laptops.  
+		</p>
+		<p>
+			Performance of object-aligned slices is improved by using hardware vertex buffers, such that only one transfer from local to video memory is needed. Unfortunately, performance of view-aligned slices does not benefit from this property as they must be re-computed each frame. 
+		</p>
+		<p>
+			Memory usage of 3D textures is extremely high. Unfortunately, a major limitation of WebGL is that there is very little support for compressed textures in major browsers. Furthermore, storing the source data also requires a significant amount of memory. 
+		</p>
+		
+		<h2 id="issues">Known Issues</h2>
+		<p>
+			This project was very difficult for us due to the self-imposed challenge of implementing it in WebGL. Despite devoting a large amount of time to the project, we were unable to solve the following issues:
+		</p>
+		<ul>
+			<li>
+				When meshes are transferred to the video card using glBufferData, the Z-coordinate is randomly cleared to 0. We are using the correct options for both the size, stride, and type of the data attribute. This issue affects clipping planes, as the Z-coordinate is always zero from the perspective of the fragment shader. We coped with this error by translating by a fixed amount before drawing each slice, but this approach causes other problems.
+			</li>
+			
+			<li>
+				Object-aligned slices are only on the XY plane. This is required by the inconsistent Z-clearing glitch. Our strategy of translating the coordinate system before rendering each slice only works on these planes due to their constant Z values. The result of this limitation is that slices have gaps when the view is close to 90 or 270 degrees. 
+			</li>
+			
+			<li>
+				The Z-channel of clipping planes and boxes does not function at all. This is a result of the Z-clearing bug. 
+			</li>
+			
+			<li>
+				View aligned slices are heavily distorted. We believe this is also a result of the Z-channel clearing.
+			</li>
+			
+			<li>
+				There appears to be a hardware limit on vertex buffer objects in WebGL. Despite carefully segregating our data bindings, once enough buffers are present, there appear to be changes to other buffers when data is changed. This behavior is very strange, and we haven't been able to reliably reproduce it. This issue further prevents us from having multiple sets of slices for different angles. 
+			</li>
+		</ul>
+		
+		<p>
+			As you can see, the Z-clearing bug causes a number of issues. All three of us have spent dozens of man-hours trying to find the source of this bug, but we are unable. 
+		</p>
+		
+		<h2 id="conc">Conclusion</h2>
+		<p>
+			Despite the issues caused by the Z-clearing bug, we believe that we have demonstrated a basic understanding of volume rendering using 2D and 3D textures. We developed a web application using Javascript and WebGL which allows a volume to be visualized. Lastly, we used the web platform to implement a graphical user interface for manipulating these volumes.
+		</p>
+	</body>
+	
+</html>

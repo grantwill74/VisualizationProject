@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			body {
+				border: 0;
+				background-color: #EEE;
+				margin: 40px;
+				max-width: 650px;
+				line-height: 1.6;
+				font-size: 18px;
+				color: #333; 
+				padding: 0 10px;
+				display: table-cell;
+				vertical-align: middle;
+			}
+			
+			button {
+				height: 95%;
+				width: 95%;
+				font-size: 20px;
+			}
+			
+			td { 
+				vertical-align: top;
+				padding-left: 20px;
+				padding-right: 20px;
+			}
+			
+			.names {
+				font-family: serif;
+				letter-spacing: 2px;
+				text-align: center;
+				margin-top: -10px;
+			}
+			
+			.readme {
+				font-family: sans-serif;
+				text-align: center;
+				margin-top: -10px;
+			}
+			
+			.no-impl {
+				color: brown;
+			}
+			
+			h1, h2, h3 {
+				line-height: 1.0;
+				font-family: sans-serif;
+			}
+			
+			h1 { 
+				text-align: center;
+				margin-bottom: -10px;
+			}
+
+			canvas {
+				width: 600px;
+				height: 400px;
+				display: block;
+				padding-bottom: 20px;
+			}
+			
+			html {
+				display: table;
+				margin: auto;
+			}
+		</style>
+		
+		<script src="../deps/gl-matrix.js"></script>
+		
+		<script src="../data/dataDensity.js"></script>
+		
+		<script src="../code/globals.js"></script>
+		<script src="../code/shaders.js"></script>
+		<script src="../code/transfer.js"></script>
+		<script src="../code/render.js"></script>
+		<script src="../code/slices2d.js"></script>
+		<script src="../code/slices3d.js"></script>
+		<script src="../code/texture.js"></script>
+		<!-- <script src="code/meshGen.js"></script> -->
+		<script src="../code/init.js"></script>
+
+		<script type="text/javascript">
+
+			function show_plane() {
+    				if (document.getElementById('yesshow').checked) {
+        				document.getElementById('show').style.display = 'block';
+						document.getElementById('show_box').style.display = 'none';
+    				}
+    				else document.getElementById('show').style.display = 'none';
+
+				}
+
+		</script>
+		<script type="text/javascript">
+
+			function show_box() {
+    				if (document.getElementById('yesshow_box').checked) {
+        				document.getElementById('show_box').style.display = 'block';
+						document.getElementById('show').style.display = 'none';
+    				}
+    				else document.getElementById('show_box').style.display = 'none';
+
+				}
+
+		</script>
+		<script type="text/javascript">
+			function getRadio( name ) {
+				var elems = document.getElementsByName( name );
+				var value = null;
+				
+				for( var i = 0; i < elems.length; i++ ) {
+					if( elems[i].checked )
+						value = elems[i].value;
+				}
+				
+				return value;
+			}
+			
+			function getNumInput( id ) {
+				return parseFloat( document.getElementById( id ).value );
+			}
+		
+			function onUpdateParams() {
+				//rotation mode 
+				var rotMode = getRadio( "rotation" );
+				if( rotMode == "autoRot" ) {
+					autoRotate = true;
+				}
+				else {
+					autoRotate = false;
+					
+					rotX = getNumInput( "xRot" ) / 360.0 * Math.PI * 2.0;
+					rotY = getNumInput( "yRot" ) / 360.0 * Math.PI * 2.0;
+					rotZ = getNumInput( "zRot" ) / 360.0 * Math.PI * 2.0;
+				}
+			
+				//projection mode 
+				texMode = getRadio( "projection" );
+				
+				//clipping mode
+				var clipMode = getRadio( "clipMode" );
+				
+				if( clipMode === "clip_plane" ) {
+					clippingPlanes[0] = getNumInput( "X+" );
+					clippingPlanes[1] = getNumInput( "X-" );
+					clippingPlanes[2] = getNumInput( "Y+" );
+					clippingPlanes[3] = getNumInput( "Y-" );
+					clippingPlanes[4] = getNumInput( "Z+" );
+					clippingPlanes[5] = getNumInput( "Z-" );
+				}
+				else if( clipMode === "clip_box" ) {
+					var x = getNumInput( "X" );
+					var y = getNumInput( "Y" );
+					var z = getNumInput( "Z" );
+					var l = getNumInput( "layers" );
+					var r = getNumInput( "rows" );
+					var c = getNumInput( "cols" );
+					
+					console.log( x, y, z, l, r, c, x+c, y+r, z+l );
+					
+					clippingPlanes[1] = x;
+					clippingPlanes[0] = x + c;
+					
+					clippingPlanes[3] = y;
+					clippingPlanes[2] = y + r;
+					
+					clippingPlanes[5] = z;
+					clippingPlanes[4] = z + l;
+				}
+				else {
+					clippingPlanes[0] = 80;
+					clippingPlanes[1] = 0;
+					clippingPlanes[2] = 80;
+					clippingPlanes[3] = 0;
+					clippingPlanes[4] = 80;
+					clippingPlanes[5] = 0;
+				}
+			}
+		</script>
+	</head>
+
+	<body onload="init()">
+		<h1>Volumetric Texture Visualizer</h1>
+		<div class="names">Shayan Shams, Grant Williams, Chenguang Zhang</div>
+		<div class="readme"><a href="readme.html">Click here to view the readme/report.</a></div>
+		<canvas id="glcanvas" width="600" height="400">
+			Your browser doesn't appear to support the 
+			<code>&lt;canvas&gt;</code> element.
+		</canvas>
+		
+		<table>
+		<tr>
+			<td><h1 style="margin: auto;">Settings</h1></td>
+			<td><button onclick="onUpdateParams()">Update</button></td>
+		</tr>
+		
+		<tr>
+		<td>
+			<h2>View:</h2>
+			<form>
+				<input type="radio" name="rotation" value="autoRot" checked/>Auto-rotate<br/>
+				<input type="radio" name="rotation" value="manRot" />Manual rotation (degrees):<br/>
+				<div id="showRot">
+					X = <input type='text' id='xRot' value="0"><br>
+					Y = <input type='text' id='yRot' value="0"><br>
+					Z = <input type='text' id='zRot' value="0"><br>
+				</div>
+			</form>
+			
+			<h2>Texture Mode:</h2>
+			<form>
+				<input type="radio" name="projection" value="tex_2D" checked />2D Texture: Object-aligned Slices<br/>
+				<input type="radio" name="projection" value="tex_3D" />3D Texture Mode (has issues)<br/>
+			</form>
+		</td>
+		
+		<td>
+		<h2>Clipping Mode:</h2>
+		<form>
+			<input type="radio" name="clipMode" value="clip_none" checked />No Clipping<br/>
+			<input type="radio" name="clipMode" value="clip_plane" onclick="javascript:show_plane();" id="yesshow" />Clipping Plane<br/>
+				<div id="show">
+					X+=<input type='text' id='X+' value="80"><br>
+					X-=<input type='text' id='X-' value="0"><br>
+					Y+=<input type='text' id='Y+' value="80"><br>
+					Y-=<input type='text' id='Y-' value="0"><br>
+					<span class="no-impl">Z+=</span><input type='text' id='Z+' value="80"><br>
+					<span class="no-impl">Z-=</span><input type='text' id='Z-' value="0"><br>
+				</div>
+			<input type="radio" name="clipMode" value="clip_box" onclick="javascript:show_box();" id="yesshow_box" />Clipping Box<br/>
+				<div id="show_box" style="display: none;">
+					X=<input type='text' id='X' value="0" ><br>
+					Y=<input type='text' id='Y' value="0" ><br>
+					<span class="no-impl">Z=</span><input type='text' id='Z' value="0" ><br>
+					<span class="no-impl">layers=</span><input type='text' id='layers' value="80"><br>
+					rows=<input type='text' id='rows' value="80" ><br>
+					cols=<input type='text' id='cols' value="80" ><br>
+    			</div>
+		</form>
+		</td>
+		</tr>
+		</table>
+	</body>
+</html>
